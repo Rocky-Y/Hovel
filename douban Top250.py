@@ -1,5 +1,8 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#crawspider登陆豆瓣，爬取豆瓣电影top250
+# @Author  : Rocky-Y
+# @Email   : 1347634801@qq.com
+
 import scrapy
 import urllib
 from PIL import Image
@@ -22,32 +25,23 @@ class Movietop250LoginCrawlspiderSpider(CrawlSpider):
     )
 
     def start_requests(self):
-    '''
-    重写start_requests，请求登录页面
-    '''
     return [scrapy.FormRequest("https://accounts.douban.com/login", headers=self.headers, meta={"cookiejar":1}, callback=self.parse_before_login)]
 
 
     def parse_before_login(self, response):
-    '''
-    登录表单填充，查看验证码
-    '''
-    print("登录前表单填充")
     captcha_id = response.xpath('//input[@name="captcha-id"]/@value').extract_first()
     captcha_image_url = response.xpath('//img[@id="captcha_image"]/@src').extract_first()
     if captcha_image_url is None:
-        print("登录时无验证码")
+        print("无验证码")
         formdata = {
                 "source": "index_nav",
-                "form_email": "yanggd1987@163.com",
+                "form_email": "************",
                 "form_password": "******",
             }
     else:
-        print("登录时有验证码")
+        print("有验证码")
         save_image_path = "/home/yanggd/python/scrapy/douban/douban/spiders/captcha.jpeg"
-        #将图片验证码下载到本地
-        urllib.urlretrieve(captcha_image_url, save_image_path)
-        #打开图片，以便我们识别图中验证码
+        urllib.urlretrieve(captcha_image_url, save_image_path)    #打开图片，以便我们识别图中验证码
         try:
             im = Image.open('captcha.jpeg')
             im.show()
@@ -55,32 +49,25 @@ class Movietop250LoginCrawlspiderSpider(CrawlSpider):
             pass
 
         #手动输入验证码
-        captcha_solution = raw_input('根据打开的图片输入验证码:')
+        captcha_solution = raw_input('输入验证码:')
         formdata = {
                 "source": "None",
                 "redir": "https://www.douban.com",
-                "form_email": "yanggd1987@163.com",
-                                "form_password": "******",
+                "form_email": "******",
+                "form_password": "******",
                 "captcha-solution": captcha_solution,
                 "captcha-id": captcha_id,
                 "login": "登录",
             }
 
-
-    print("登录中")
-    #提交表单
     return scrapy.FormRequest.from_response(response, meta={"cookiejar":response.meta["cookiejar"]}, headers=self.headers, formdata=formdata, callback=self.parse_after_login)
 
     def parse_after_login(self, response):
-    '''
-    验证登录是否成功,通过make_requests_from_url对接crawlspider
-    '''
     account = response.xpath('//a[@class="bn-more"]/span/text()').extract_first()
     if account is None:
         print("登录失败")
     else:
         print(u"登录成功,当前账户为 %s" %account)
-        #在此通过make_requests_from_url进入rules
         for url in self.start_urls :
             yield self.make_requests_from_url(url)
 
